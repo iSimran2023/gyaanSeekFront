@@ -1,39 +1,80 @@
 import React from "react";
-import { X, LogOut } from "lucide-react";
+import { LogOut, X } from "lucide-react";
+import { useAuth } from "../context/AuthProvider";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-const Sidebar = () => {
+function Sidebar() {
+  const user = JSON.parse(localStorage.getItem("user"));
+  const [, setAuthUser] = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      const { data } = await axios.get(
+        "http://localhost:4002/api/v1/user/logout",
+        {
+          withCredentials: true,
+        }
+      );
+
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+
+      alert(data.message);
+
+      setAuthUser(null);
+      navigate("/login");
+    } catch (error) {
+      alert(error?.response?.data?.errors || "Logout Failed");
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col bg-[#232327]">
-      <div className="p-4 bordere-b border-gray-700 flex items-center justify-between">
-        <div className="text-xl font-bold text-white">AI Tool</div>
-        <button>
-          <X className="text-gray-300 w-6 h-6" />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-        <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl mb-4">
-          + New Chat
-        </button>
-        <div className="text-gray-500 text-sm mt-20 text-center">
-          No chat history yet
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="flex-shrink-0">
+        <div className="flex p-4 justify-between items-center">
+          <div className="text-2xl font-bold text-gray-200">GyaanSeek</div>
         </div>
-      </div>
 
-      <div className="p-4 border-t border-gray-700">
-        <div className="flex flex-col gap-3">
-          <div className="flex item-center gap-2 cursor-pointer">
-            <img className="rounded-full w-8 h-8" src="" alt="" />
-            <span className="text-gray-300">My Profile</span>
-          </div>
-          <button className="flex items-center text-sm gap-2 text-white px-4 py-2 rounded-lg hover:bg-gray-700 duration-300 transition">
-            <LogOut className="" />
-            Logout
+        {/* History */}
+        <div className="p-4">
+          <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl transition-colors">
+            + New Chat
           </button>
+          <div className="text-gray-500 text-sm text-center mt-5">
+            No chat history yet
+          </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <div className="mt-auto p-4">
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <img
+        src="https://i.pravatar.cc/32"
+        alt="profile"
+        className="rounded-full w-8 h-8"
+      />
+      <span className="text-gray-300 font-medium">
+        {user ? user?.firstName : "My Profile"}
+      </span>
+    </div>
+    
+    {user && (
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-2 text-gray-300 hover:text-white text-sm px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+      >
+        <LogOut className="w-4 h-4" />
+      </button>
+    )}
+  </div>
+</div>
     </div>
   );
-};
+}
 
 export default Sidebar;
