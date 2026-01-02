@@ -1,4 +1,4 @@
-import { Eye } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -13,16 +13,13 @@ function Signup() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); 
+
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    const value = e.target.value;
-    const name = e.target.name;
-
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSignup = async () => {
@@ -30,16 +27,9 @@ function Signup() {
     setError("");
     try {
       const { data } = await axios.post(
-        "http://localhost:4002/api/v1/user/signup",
-        {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          password: formData.password,
-        },
-        {
-          withCredentials: true,
-        }
+        `${import.meta.env.VITE_FRONTEND_URL}/api/v1/user/signup`,
+        formData,
+        { withCredentials: true }
       );
       alert(data.message || "Signup succeeded");
       navigate("/login");
@@ -52,15 +42,13 @@ function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex item-center justify-center bg-black px-4">
-      <div className="bg-[#1e1e1e] text-white w-full max-w-md rounded-2xl p-6 shadow-lg">
-        <h1 className="text-white items-center justify-center text-center">
-          Signup
-        </h1>
+    <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="bg-[#1e1e1e] w-full max-w-md max-h-[480px] rounded-2xl p-6 shadow-lg">
+        <h1 className="text-[#EEEBDD] text-center">Signup</h1>
 
         <div className="mb-4 mt-2">
           <input
-            className="w-full bg-transparent border border-gray-600 rounded-md px-4 py-3 placeholder-gray-400 text-sm focus:outline:none focus:ring-2 focus:ring-[#7a6ff0"
+            className="w-full border border-[#630000] rounded-md px-4 py-3 placeholder:text-gray-400 text-black text-sm focus:outline-none focus:ring-2 focus:ring-[#EEEBDD]"
             type="text"
             name="firstName"
             placeholder="firstname"
@@ -71,7 +59,7 @@ function Signup() {
 
         <div className="mb-4 mt-2">
           <input
-            className="w-full bg-transparent border border-gray-600 rounded-md px-4 py-3 placeholder-gray-400 text-sm focus:outline:none focus:ring-2 focus:ring-[#7a6ff0"
+            className="w-full border border-[#630000] rounded-md px-4 py-3 placeholder:text-gray-400 text-black text-sm focus:outline-none focus:ring-2 focus:ring-[#EEEBDD]"
             type="text"
             name="lastName"
             placeholder="lastname"
@@ -82,7 +70,7 @@ function Signup() {
 
         <div className="mb-4 mt-2">
           <input
-            className="w-full bg-transparent border border-gray-600 rounded-md px-4 py-3 placeholder-gray-400 text-sm focus:outline:none focus:ring-2 focus:ring-[#7a6ff0"
+            className="w-full border border-[#630000] rounded-md px-4 py-3 placeholder:text-gray-400 text-black text-sm focus:outline-none focus:ring-2 focus:ring-[#EEEBDD]"
             type="text"
             name="email"
             placeholder="email"
@@ -93,45 +81,42 @@ function Signup() {
 
         <div className="mb-4 mt-2 relative">
           <input
-            className="w-full bg-transparent border border-gray-600 rounded-md px-4 py-3 placeholder-gray-400 text-sm focus:outline:none focus:ring-2 focus:ring-[#7a6ff0"
-            type="text"
+            className="w-full border border-[#630000] rounded-md px-4 py-3 placeholder:text-gray-400 text-black text-sm focus:outline-none focus:ring-2 focus:ring-[#EEEBDD]"
+            type={showPassword ? "text" : "password"} 
             name="password"
             placeholder="password"
             value={formData.password}
             onChange={handleChange}
           />
-          <span className="absolute right-3 top-3 text-gray-400">
-            <Eye size={18} />
+          <span
+            className="absolute right-3 top-3 text-black cursor-pointer"
+            onClick={() => setShowPassword((prev) => !prev)} 
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </span>
         </div>
 
-        {error && <span className="text-red-600 text-sm mb-4">{error}</span>}
+        {error && <span className="text-red-600 text-sm mb-4 block">{error}</span>}
 
-        <p className="text-xs text-gray-400 mt-4 mb-6">
+        <p className="text-xs text-[#EEEBDD] mt-4 mb-6">
           By signing up or logging in, you consent to Gyaanseek's
-          <a className="underline" href="">
-            Terms of use
-          </a>
-          and{" "}
-          <a className="underline" href="">
-            Privacy Policy
-          </a>
-          .
+          <a className="underline ml-1" href="">Terms of use</a> and{" "}
+          <a className="underline" href="">Privacy Policy</a>.
         </p>
 
         <button
           onClick={handleSignup}
           disabled={loading}
-          className="w-full bg-[#7a6ff6] hover:bg-[#6c61a6] text-white font-semibold py-3 rounded-lg transition disabled:opacity-50"
+          className="w-full bg-[#810000] hover:bg-[#630000] text-[#EEEBDD] font-semibold py-3 rounded-lg transition disabled:opacity-50"
         >
-          {loading? "Signing...":"Signup" }
+          {loading ? "Signing..." : "Signup"}
         </button>
 
         <div className="flex justify-between mt-4 text-sm">
-          <a className="text-[#7a6ff6] hover:underline" href="">
-            Already registered?
-          </a>
-          <Link to={"/login"}>Login</Link>
+          <span className="text-[#EEEBDD]">Already registered?</span>
+          <Link className="text-[#EEEBDD] hover:text-[#810000]" to="/login">
+            Login
+          </Link>
         </div>
       </div>
     </div>

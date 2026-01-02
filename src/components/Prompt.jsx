@@ -1,11 +1,12 @@
 import React, { useRef, useEffect, useState } from "react";
-import { ArrowUp, Globe, Paperclip, Sun, Moon } from "lucide-react";
+import { ArrowUp, Globe, Sun, Moon } from "lucide-react";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { tomorrow as codeTheme } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "../context/ThemeProvider";
+import { useNavigate } from "react-router-dom";
 
 function Prompt({ 
   prompt, 
@@ -16,73 +17,96 @@ function Prompt({
   fetchChatHistory 
 }) {
   const [inputValue, setInputValue] = useState("");
-  const [typeMessage, setTypeMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const promptEndRef = useRef();
+  const navigate = useNavigate();
 
+  // Scroll to bottom on new messages
   useEffect(() => {
     promptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [prompt, loading]);
 
-  const handleSend = async () => {
-    const trimmed = inputValue.trim();
-    if (!trimmed) return;
-    
-    setTypeMessage(trimmed);
-    setInputValue("");
-    setLoading(true);
-
-    try {
-      const token = localStorage.getItem("token");
-      const { data } = await axios.post(
-        "http://localhost:4002/api/v1/aiTool/prompt",
-        { 
-          content: trimmed,
-          chatId: currentChatId
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          withCredentials: true,
-        }
-      );
-      
-      const newPrompt = [
-        ...prompt,
-        { role: "user", content: trimmed },
-        { role: "assistant", content: data.reply },
-      ];
-      
-      setPrompt(newPrompt);
-      
-      if (!currentChatId && data.chatId) {
-        setCurrentChatId(data.chatId);
-        if (newPrompt.length === 2) {
-          const title = trimmed.length > 30 
-            ? trimmed.substring(0, 30) + "..." 
-            : trimmed;
-          setChatTitle(data.chatId, title);
-        }
-      }
-      
-      setTimeout(() => {
-        fetchChatHistory();
-      }, 500);
-      
-    } catch (error) {
-      const newPrompt = [
-        ...prompt,
-        { role: "user", content: trimmed },
-        { role: "assistant", content: "Something went wrong with AI response" },
-      ];
-      setPrompt(newPrompt);
-    } finally {
-      setLoading(false);
-      setTypeMessage(null);
+  // ✅ FIXED: Handle token and auth errors
+  const getValidToken = () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.warn("No token found in localStorage");
+      return null;
     }
+    // Optional: validate JWT format (basic check)
+    if (!token.match(/^[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+$/)) {
+      console.warn("Token format invalid:", token);
+      return null;
+    }
+    return token;
   };
+
+  const handleSend = async () => {
+  const trimmed = inputValue.trim();
+  if (!trimmed) return;
+
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Session expired. Please log in again.");
+    navigate("/login");
+    return;
+  }
+
+  setInputValue("");
+  setLoading(true);
+
+  try {
+    const { data } = await axios.post(
+      `${import.meta.env.VITE_FRONTEND_URL}/api/v1/aiTool/prompt`,
+      { 
+        content: trimmed,
+        chatId: currentChatId // can be null/undefined/string
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      }
+    );
+
+    // ✅ 1. Create new messages
+    const newUserMsg = { role: "user", content: trimmed };
+    const newAIMsg = { role: "assistant", content: data.reply };
+    const newPrompt = [...prompt, newUserMsg, newAIMsg];
+    setPrompt(newPrompt);
+
+    // ✅ 2. CRITICAL: Update currentChatId if new ID received
+    if (data.chatId && (!currentChatId || currentChatId !== data.chatId)) {
+      const newChatId = data.chatId;
+      setCurrentChatId(newChatId); // ← This was missing or broken
+      
+      // Set title for new chats only
+      if (!currentChatId) {
+        const title = trimmed.length > 40 
+          ? trimmed.substring(0, 40) + "..." 
+          : trimmed;
+        setChatTitle(newChatId, title);
+      }
+    }
+
+    // ✅ 3. Refresh chat list (so new chat appears)
+    setTimeout(fetchChatHistory, 200);
+
+  } catch (error) {
+    console.error("Prompt error:", error);
+    if (error.response?.status === 401) {
+      alert("Session expired. Redirecting to login...");
+      localStorage.removeItem("token");
+      navigate("/login");
+    } else {
+      const errorMsg = error.response?.data?.error || "AI response failed. Please try again.";
+      setPrompt(prev => [...prev, { role: "user", content: inputValue }, { role: "assistant", content: errorMsg }]);
+    }
+  } finally {
+    setLoading(false);
+  }
+  
+};
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -101,32 +125,23 @@ function Prompt({
           onClick={toggleTheme}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
             theme === 'dark' 
-              ? 'bg-[#810000] hover:bg-[#630000] text-[#EEEBDD]' // Dark red button
+              ? 'bg-[#810000] hover:bg-[#630000] text-[#EEEBDD]'
               : 'bg-[#FBEFEF] hover:bg-[#F9DFDF] text-gray-700'
           }`}
         >
-          {theme === 'dark' ? (
-            <>
-              <Sun className="w-4 h-4" />
-            </>
-          ) : (
-            <>
-              <Moon className="w-4 h-4" />
-            </>
-          )}
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
       </div>
 
       {/* Greeting or Chat */}
       <div className="flex-1 overflow-hidden">
         {prompt.length === 0 ? (
-          // Greeting Section
           <div className="h-full flex items-center justify-center">
             <div className="text-center w-full max-w-4xl px-4">
               <div className="flex items-center justify-center gap-3 mb-4">
                 <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
                   theme === 'dark'
-                    ? 'bg-gradient-to-r from-[#810000] to-[#630000]' // Red gradient
+                    ? 'bg-gradient-to-r from-[#810000] to-[#630000]'
                     : 'bg-gradient-to-r from-[#F5AFAF] to-[#F9DFDF]'
                 }`}>
                   <span className="text-white font-bold text-xl">GS</span>
@@ -145,8 +160,7 @@ function Prompt({
             </div>
           </div>
         ) : (
-          // Chat Section
-          <div className="h-full overflow-y-auto  ml-2">
+          <div className="h-full overflow-y-auto ml-2">
             <div className="w-full max-w-4xl mx-auto px-4">
               {prompt.map((msg, index) => (
                 <div
@@ -158,7 +172,7 @@ function Prompt({
                   {msg.role === "assistant" ? (
                     <div className={`max-w-[100%] rounded-xl px-4 py-3 mt-2 text-sm whitespace-pre-wrap transition-colors duration-300 ${
                       theme === 'dark' 
-                        ? 'bg-[#2D2D2D] text-[#EEEBDD] border border-[#630000]' // Dark gray with cream text
+                        ? 'bg-[#2D2D2D] text-[#EEEBDD] border border-[#630000]'
                         : 'bg-[#FBEFEF] text-gray-900 border border-[#F9DFDF]'
                     }`}>
                       <ReactMarkdown
@@ -197,7 +211,7 @@ function Prompt({
                   ) : (
                     <div className={`max-w-[70%] rounded-xl px-4 py-3 text-sm whitespace-pre-wrap transition-colors duration-300 ${
                       theme === 'dark' 
-                        ? 'bg-[#810000] text-[#EEEBDD]' // Dark red user messages
+                        ? 'bg-[#810000] text-[#EEEBDD]'
                         : 'bg-[#F5AFAF] text-white'
                     }`}>
                       {msg.content}
@@ -205,28 +219,19 @@ function Prompt({
                   )}
                 </div>
               ))}
-              {loading && typeMessage && (
-                <div className="flex justify-end">
-                  <div className={`max-w-[70%] rounded-xl px-4 py-3 text-sm whitespace-pre-wrap transition-colors duration-300 ${
-                    theme === 'dark' 
-                      ? 'bg-[#810000] text-[#EEEBDD]' 
-                      : 'bg-[#F5AFAF] text-white'
-                  }`}>
-                    {typeMessage}
-                  </div>
-                </div>
-              )}
+              
               {loading && (
-                <div className="flex justify-start">
+                <div className="flex justify-start mt-4">
                   <div className={`px-4 py-3 rounded-xl text-sm animate-pulse transition-colors duration-300 ${
                     theme === 'dark' 
                       ? 'bg-[#2D2D2D] text-[#EEEBDD] border border-[#630000]' 
                       : 'bg-[#FBEFEF] text-gray-900 border border-[#F9DFDF]'
                   }`}>
-                    Loading...
+                    Thinking...
                   </div>
                 </div>
               )}
+              
               <div ref={promptEndRef} />
             </div>
           </div>
@@ -240,7 +245,7 @@ function Prompt({
         <div className="w-full max-w-4xl mx-auto px-4">
           <div className={`rounded-2xl px-6 py-6 shadow-lg transition-colors duration-300 ${
             theme === 'dark' 
-              ? 'bg-[#2D2D2D] border border-[#630000]' // Dark gray with dark red border
+              ? 'bg-[#2D2D2D] border border-[#630000]'
               : 'bg-white border border-[#F9DFDF]'
           }`}>
             <textarea
@@ -256,28 +261,29 @@ function Prompt({
             />
             <div className="flex items-center justify-between mt-4 gap-4">
               <div className="flex">
-                <button className={`flex items-center gap-2 border text-base px-3 py-1.5 rounded-full transition-colors duration-300 ${
-                  theme === 'dark' 
-                    ? 'border-[#630000] text-[#EEEBDD] hover:bg-[#630000]' 
-                    : 'border-[#F9DFDF] text-gray-700 hover:bg-[#FBEFEF]'
-                }`}>
+                <button 
+                  className={`flex items-center gap-2 border text-base px-3 py-1.5 rounded-full transition-colors duration-300 ${
+                    theme === 'dark' 
+                      ? 'border-[#630000] text-[#EEEBDD] hover:bg-[#630000]' 
+                      : 'border-[#F9DFDF] text-gray-700 hover:bg-[#FBEFEF]'
+                  }`}
+                >
                   <Globe className="w-5 h-4" />
                   Search
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                
                 <button
                   onClick={handleSend}
                   disabled={!inputValue.trim() || loading}
-                  className={`transition-colors duration-300 p-2 rounded-full text-white ${
+                  className={`transition-colors duration-300 p-2 rounded-full ${
                     inputValue.trim() && !loading
                       ? theme === 'dark'
-                        ? "bg-[#810000] hover:bg-[#630000]"
-                        : "bg-[#F5AFAF] hover:bg-[#F9DFDF]"
+                        ? "bg-[#810000] hover:bg-[#630000] text-white"
+                        : "bg-[#F5AFAF] hover:bg-[#F9DFDF] text-white"
                       : theme === 'dark'
-                        ? "bg-[#2D2D2D] cursor-not-allowed border border-[#630000]"
-                        : "bg-gray-300 cursor-not-allowed"
+                        ? "bg-[#2D2D2D] text-gray-500 border border-[#630000] cursor-not-allowed"
+                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   }`}
                 >
                   <ArrowUp className="w-5 h-5" />
