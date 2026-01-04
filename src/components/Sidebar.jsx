@@ -16,7 +16,6 @@ function Sidebar({ isOpen, setIsOpen, user, handleLogout, onNewChat, messageCoun
 
   // Extract first message from chat history to use as title
   const getChatDisplayTitle = (chat) => {
-    // If chat has a custom title (from edit), use that
     if (chat.title && chat.title !== 'Chat') {
       return chat.title;
     }
@@ -25,13 +24,11 @@ function Sidebar({ isOpen, setIsOpen, user, handleLogout, onNewChat, messageCoun
     if (chat.messages && chat.messages.length > 0) {
       const firstUserMessage = chat.messages.find(msg => msg.role === 'user');
       if (firstUserMessage && firstUserMessage.content) {
-        // Take first 4-5 words from the user's first message
         const words = firstUserMessage.content.trim().split(/\s+/);
         return words.slice(0, 4).join(' ') + (words.length > 4 ? '...' : '');
       }
     }
     
-    // Fallback title
     return 'New Chat';
   };
 
@@ -62,14 +59,14 @@ function Sidebar({ isOpen, setIsOpen, user, handleLogout, onNewChat, messageCoun
 
   return (
     <>
-      {/* Menu Button - Only shows when sidebar is closed */}
+      {/* Menu Button */}
       {!isOpen && (
         <button
           onClick={toggleSidebar}
           className={`fixed top-4 left-4 z-50 p-2 text-white rounded-lg transition-colors ${
             theme === 'dark'
-              ? 'bg-[#810000] hover:bg-[#EEEBDD] hover:text-[#1B1717]' // Dark red button, cream hover
-              : 'bg-[#F5AFAF] hover:bg-[#F9DFDF]' // Pink theme
+              ? 'bg-[#810000] hover:bg-[#EEEBDD] hover:text-[#1B1717]' 
+              : 'bg-[#F5AFAF] hover:bg-[#F9DFDF]' 
           }`}
         >
           <PanelLeft className="w-5 h-5" />
@@ -88,7 +85,7 @@ function Sidebar({ isOpen, setIsOpen, user, handleLogout, onNewChat, messageCoun
       <div
         className={`fixed top-0 left-0 h-full transition-colors duration-300 ${
           theme === 'dark' 
-            ? 'bg-[#1B1717] text-[#EEEBDD] border-r border-[#630000]' // Dark background with cream text
+            ? 'bg-[#1B1717] text-[#EEEBDD] border-r border-[#630000]' 
             : 'bg-[#FCF8F8] text-gray-900 border-r border-[#F9DFDF]'
         } z-40 transition-all duration-300 ease-in-out flex flex-col ${
           isOpen ? "translate-x-0" : "-translate-x-full"
@@ -127,7 +124,7 @@ function Sidebar({ isOpen, setIsOpen, user, handleLogout, onNewChat, messageCoun
               } ${
                 theme === 'dark'
                   ? messageCount > 0 
-                    ? 'bg-[#810000] hover:bg-[#630000]' // Dark red with darker red hover
+                    ? 'bg-[#810000] hover:bg-[#630000]' 
                     : 'bg-gray-700'
                   : messageCount > 0
                     ? 'bg-[#F5AFAF] hover:bg-[#F9DFDF]'
@@ -159,10 +156,10 @@ function Sidebar({ isOpen, setIsOpen, user, handleLogout, onNewChat, messageCoun
                       className={`group relative w-full text-left px-3 py-2 rounded-lg transition-colors cursor-pointer ${
                         currentChatId === chat.id
                           ? theme === 'dark'
-                            ? 'bg-[#810000] text-[#EEEBDD]' // Dark red for active chat
+                            ? 'bg-[#810000] text-[#EEEBDD]'
                             : 'bg-[#F5AFAF] text-white'
                           : theme === 'dark' 
-                            ? 'bg-[#2D2D2D] hover:bg-[#630000] text-[#EEEBDD]' // Dark gray with darker red hover
+                            ? 'bg-[#2D2D2D] hover:bg-[#630000] text-[#EEEBDD]'
                             : 'bg-[#FBEFEF] hover:bg-[#F9DFDF] text-gray-700'
                       }`}
                     >
@@ -178,7 +175,7 @@ function Sidebar({ isOpen, setIsOpen, user, handleLogout, onNewChat, messageCoun
                             }}
                             className={`flex-1 text-sm px-2 py-1 rounded outline-none ${
                               theme === 'dark' 
-                                ? 'bg-[#EEEBDD] text-[#1B1717]' // Cream input with dark text
+                                ? 'bg-[#EEEBDD] text-[#1B1717]' 
                                 : 'bg-white text-gray-900'
                             }`}
                             autoFocus

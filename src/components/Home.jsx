@@ -5,20 +5,20 @@ import { useTheme } from "../context/ThemeProvider";
 import axios from "axios";
 import Sidebar from "./Sidebar";
 import Prompt from "./Prompt";
+import toast from 'react-hot-toast';
 
 function Home() {
   const [isOpen, setIsOpen] = useState(false);
   const [authUser, setAuthUser] = useAuth();
   const [prompt, setPrompt] = useState([]);
   const [chatHistory, setChatHistory] = useState([]);
-  const [currentChatId, setCurrentChatId] = useState(null); // ✅ starts as null
+  const [currentChatId, setCurrentChatId] = useState(null); // starts as null
   const [loadingHistory, setLoadingHistory] = useState(false);
   const navigate = useNavigate();
   const { theme } = useTheme();
 
   const user = JSON.parse(localStorage.getItem("user"));
 
-  // 🔥 CRITICAL FIX: Only auto-load chat if currentChatId is valid
   useEffect(() => {
     console.log("useEffect: currentChatId =", currentChatId);
     if (currentChatId && typeof currentChatId === 'string' && currentChatId.trim() !== '') {
@@ -71,7 +71,7 @@ function Home() {
       
       while (hasMore) {
         const { data } = await axios.get(
-          import.meta.env.VITE_API_URL + "/api/v1/chat/chats", // ✅ use env var
+          import.meta.env.VITE_API_URL + "/api/v1/chat/chats",
           {
             headers: { Authorization: `Bearer ${token}` },
             withCredentials: true,
@@ -99,11 +99,9 @@ function Home() {
       setLoadingHistory(true);
       const allChats = await fetchAllChats();
       
-      // ✅ Process chats with titles (no per-chat fetch needed if backend sends titles)
       const chatsWithTitles = allChats.map(chat => {
         let title = getChatTitle(chat.id);
         if (!title) {
-          // Use backend-provided title or fallback
           title = chat.title || "New Chat";
         }
         return { ...chat, title };
@@ -118,37 +116,42 @@ function Home() {
   };
 
   const handleLogout = async () => {
-    try {
-      const { data } = await axios.get(
-        import.meta.env.VITE_API_URL + "/api/v1/user/logout", // ✅ use env var
-        { withCredentials: true }
-      );
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-      localStorage.removeItem('chatTitles');
-      alert(data.message);
-      setAuthUser(null);
-      navigate("/login");
-    } catch (error) {
-      alert(error?.response?.data?.errors || "Logout Failed");
-    }
-  };
+  try {
+    const { data } = await axios.get(
+      `${import.meta.env.VITE_API_URL}/api/v1/user/logout`,
+      { withCredentials: true }
+    );
+    
+    // Clean up
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("chatTitles");
+    setAuthUser(null);
+    
+    toast.success(data.message || "Logged out successfully", { duration: 2000 });
+    setTimeout(() => navigate("/login", { replace: true }), 1000);
+    
+  } catch (error) {
+    const msg = error.response?.data?.message || "Logout failed";
+    toast.error(msg, { duration: 3000 });
+  }
+};
 
   const handleNewChat = () => {
     setPrompt([]);
-    setCurrentChatId(null); // ✅ reset to null
+    setCurrentChatId(null); 
   };
 
-  // 🔥 CRITICAL FIX: Validate chatId before use
+  // CRITICAL FIX: Validate chatId before use
   const handleSelectChat = async (chatId) => {
-    // ✅ Validate input
+    // Validate input
     if (!chatId || typeof chatId !== 'string' || chatId.trim() === '') {
       console.warn("Invalid chatId:", chatId);
       return;
     }
 
     try {
-      console.log("Loading chat:", chatId); // ✅ debug log
+      console.log("Loading chat:", chatId); // debug log
       const token = localStorage.getItem("token");
       const { data } = await axios.get(
         `${import.meta.env.VITE_API_URL}/api/v1/chat/chats/${encodeURIComponent(chatId)}`,
@@ -164,7 +167,7 @@ function Home() {
           content: msg.content
         }));
         setPrompt(formattedMessages);
-        setCurrentChatId(chatId); // ✅ set to valid string
+        setCurrentChatId(chatId); 
         setIsOpen(false);
       }
     } catch (error) {
@@ -178,7 +181,7 @@ function Home() {
   };
 
   const handleDeleteChat = async (chatId) => {
-    if (!chatId) return; // ✅ safety check
+    if (!chatId) return; 
     
     try {
       const token = localStorage.getItem("token");

@@ -27,7 +27,6 @@ function Prompt({
     promptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [prompt, loading]);
 
-  // ✅ FIXED: Handle token and auth errors
   const getValidToken = () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -58,10 +57,10 @@ function Prompt({
 
   try {
     const { data } = await axios.post(
-      `${import.meta.env.VITE_FRONTEND_URL}/api/v1/aiTool/prompt`,
+      `${import.meta.env.VITE_API_URL}/api/v1/aiTool/prompt`,
       { 
         content: trimmed,
-        chatId: currentChatId // can be null/undefined/string
+        chatId: currentChatId 
       },
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -69,16 +68,16 @@ function Prompt({
       }
     );
 
-    // ✅ 1. Create new messages
+    // Create new messages
     const newUserMsg = { role: "user", content: trimmed };
     const newAIMsg = { role: "assistant", content: data.reply };
     const newPrompt = [...prompt, newUserMsg, newAIMsg];
     setPrompt(newPrompt);
 
-    // ✅ 2. CRITICAL: Update currentChatId if new ID received
+    // CRITICAL: Update currentChatId if new ID received
     if (data.chatId && (!currentChatId || currentChatId !== data.chatId)) {
       const newChatId = data.chatId;
-      setCurrentChatId(newChatId); // ← This was missing or broken
+      setCurrentChatId(newChatId); 
       
       // Set title for new chats only
       if (!currentChatId) {
@@ -89,7 +88,6 @@ function Prompt({
       }
     }
 
-    // ✅ 3. Refresh chat list (so new chat appears)
     setTimeout(fetchChatHistory, 200);
 
   } catch (error) {
